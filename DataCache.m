@@ -1,5 +1,5 @@
 % DataCache a singleton class for file caching in program memory for faster
-% access. 
+% data access. 
 %
 % DESCRIPTION:
 %
@@ -35,8 +35,8 @@
 %   ResetReaders - restoers readers to the default state
 %   SetCacheSizeLimitMb - sets the cap on memory available to cache
 %   GetCacheSizeLimitMb - gets the current memory cap
-%   GetCachedDataSizeMb - gets the size of data stored in cache
 %   ResetCacheSizeLimit - removes the memory cap
+%   GetCachedDataSizeMb - gets the size of data stored in cache
 %   VerboseEnable - enables verbose messages (default)
 %   VerboseDisable - disable verbose messages
 %
@@ -60,6 +60,25 @@
 %   DataCache.AddReader('.xls', read_func);
 %   % load my .xls file
 %   DataCache.Load('spreadsheet_data.xls','.');
+%
+% See also:
+%   DATACACHE/SetDir
+%   DATACACHE/GetDir
+%   DATACACHE/Load
+%   DATACACHE/List
+%   DATACACHE/Clean
+%   DATACACHE/AddReader
+%   DATACACHE/ListReaders 
+%   DATACACHE/ResetReaders
+%   DATACACHE/SetCacheSizeLimitMb
+%   DATACACHE/GetCacheSizeLimitMb
+%   DATACACHE/ResetCacheSizeLimit
+%   DATACACHE/GetCachedDataSizeMb
+%   DATACACHE/VerboseEnable  
+%   DATACACHE/VerboseDisable 
+%
+%   Author: Jeremi Wójcicki, jeremi.wojcicki(at)gmail.com
+%   License: GNU Lesser General Public License v3.0
 
 classdef DataCache < handle
     properties (Access = private)
@@ -69,9 +88,11 @@ classdef DataCache < handle
         reader_list % list of file extensions and associated readers
         mem_cap_mb  % cache memory limit
     end
-        
+    
+%% private static helper methods
+    
     methods (Static = true, Access = private)
-        
+
         % returns the singleton instance of the class
         function obj = getInstance()
             persistent local
@@ -104,7 +125,7 @@ classdef DataCache < handle
             end
         end
         
-        % turns user path to absolute
+        % returns absolute path
         function path = absPath(path)
             if(~isfolder(path))
                 error('Not a dir')
@@ -117,6 +138,8 @@ classdef DataCache < handle
         end
         
     end
+ 
+ %% public methods - all static
     
     methods (Static = true)
                
@@ -130,7 +153,7 @@ classdef DataCache < handle
         %   it will be overwritten. To restore reader list to original
         %   state use ResetReaders
         % 
-        %   See also DATACACHE/RESETREADERS, DATACACHE/LISTREADERS 
+        %   See also DATACACHE/RESETREADERS, DATACACHE/LISTREADERS, DATACACHE 
             obj = DataCache.getInstance();
             obj.AddReaderPriv(extensions, func_handle);
         end
@@ -138,7 +161,7 @@ classdef DataCache < handle
         % restores reades to its default setting
         function ResetReaders()
         % 
-        %   See also DATACACHE/ADDREADER, DATACACHE/LISTREADERS 
+        %   See also DATACACHE/ADDREADER, DATACACHE/LISTREADERS, DATACACHE 
             obj = DataCache.getInstance();
             obj.reader_list(:) = [];
             obj.defaultReaderSet();
@@ -148,7 +171,7 @@ classdef DataCache < handle
         % ListReaders displays a lists of the handled file extensions
         % and the associated file readers 
         % 
-        %   See also DATACACHE/ADDREADER, DATACACHE/RESETREADERS 
+        %   See also DATACACHE/ADDREADER, DATACACHE/RESETREADERS, DATACACHE 
             obj = DataCache.getInstance();
             if(~isempty(obj.reader_list))
                 for r = obj.reader_list
@@ -159,8 +182,16 @@ classdef DataCache < handle
             end
         end
         
-        % sets maximum cache size in MB
         function SetCacheSizeLimitMb(limit)
+        % SetCacheSizeLimitMb sets the size limit for the cache RAM storage
+        %
+        %   SetCacheSizeLimitMb(limit) set the limit in MB. When user loads
+        %   more data than the cap, the oldest accessed files will be
+        %   purged from the cache until enough space is freed to accomodate
+        %   the new data.
+        %
+        %   See also DATACACHE/ResetCacheSizeLimit, DATACACHE/GetCacheSizeLimitMb,
+        %   DATACACHE/GetCachedDataSizeMb, DATACACHE
             obj = DataCache.getInstance();
             % purge the cache if current size exceeds the limit
             if(limit < 100)
@@ -178,8 +209,16 @@ classdef DataCache < handle
             obj.MemUsage();
         end
         
-        % eliminates cache cap
         function ResetCacheSizeLimit()
+        % ResetCacheSizeLimit removes the cache size cap
+        %
+        %   The maximum cache size will be limited only by the RAM 
+        %   available to MATLAB. If user attempts to load more data than 
+        %   available space an error will be thrown.
+        %
+        %   See also DATACACHE/SetCacheSizeLimitMb,
+        %   DATACACHE/GetCacheSizeLimitMb, DATACACHE/GetCachedDataSizeMb, 
+        %   DATACACHE
             obj = DataCache.getInstance();
             obj.mem_cap_mb = -1;
             obj.Verbose('Cache size limit removed. Cache size will be limited by the memory available to MATLAB.');
@@ -187,6 +226,14 @@ classdef DataCache < handle
         
         % returns current cache cap in MB
         function limit = GetCacheSizeLimitMb()
+        % GetCacheSizeLimitMb returns the current memory cap on cache in MB
+        %
+        %   If there is no limit set the function returns -1. If no output
+        %   paramter is specified, information is displayed in the console
+        %
+        %   See also DATACACHE/SetCacheSizeLimitMb,
+        %   DATACACHE/ResetCacheSizeLimit, DATACACHE/GetCachedDataSizeMb,
+        %   DATACACHE
             obj = DataCache.getInstance();
             if nargout > 0
                 limit = obj.mem_cap_mb;
@@ -199,18 +246,28 @@ classdef DataCache < handle
             end
         end
         
-        % returns size in MB of the cached data
         function mb = GetCachedDataSizeMb()
+        % GetCachedDataSizeMb returns the size of data in cache in MB
+        %
+        %   See also DATACACHE/SetCacheSizeLimitMb,
+        %   DATACACHE/ResetCacheSizeLimit, DATACACHE/GetCacheSizeLimitMb,
+        %   DATACACHE/GetCachedDataSizeMb, DATACACHE
             obj = DataCache.getInstance();
             cache = obj.cache; %#ok<NASGU>
             info = whos('cache');
             mb = info.bytes/(1024^2);
         end
-        
-
-        
-        % sets the current search directory
+          
         function SetDir(dir)
+        % SetDir sets the search path
+        %
+        %   SetDir(dir) sets the path where the class will look for when
+        %   loading files (unless dir is explcitly provided to the
+        %   DataCache.Load). 'dir' can be either an absolute or a relative
+        %   path. The default dir is the working directory at the moment of
+        %   class instantaniation.
+        %
+        %   See also DATACACHE/GetDir, DATACACHE/Load, DATACACHE
             validateattributes(dir,{'char','string'},{'vector'})
             try
                 obj = DataCache.getInstance();
@@ -223,13 +280,12 @@ classdef DataCache < handle
         
 
         function dir = GetDir()
-            % GetDir    obtain the current search path
-            %
-            %   dir = DataCache.GetDir() returns the absolute path
-            %
-            %   DataCache.GetDir() if no output variable is provided, current directory will be displayed
-            %
-            %   See also DATACACHE
+        % GetDir gets the current search path
+        %
+        %   If no output paramter is specified, information is displayed 
+        %   in the console.
+        %
+        %   See also DATACACHE/GetDir, DATACACHE/Load, DATACACHE
             obj = DataCache.getInstance();
             if nargout > 0
                 dir = obj.dir;
@@ -237,38 +293,28 @@ classdef DataCache < handle
                 obj.Info(['Current directory: ' obj.dir]);
             end
         end
-        
-        % enables (if provided 1/true or nothing) or disables (0/false)
-        % printed information
-        function VerboseEnable(yes_or_no)
-            obj = DataCache.getInstance();
-            
-            if(nargin > 0)
-                validateattributes(yes_or_no,{'logical','numeric'},{'scalar'})
-            else
-                yes_or_no = true;
-            end       
-            
-            if(yes_or_no)
-                obj.verbose = yes_or_no;
-                obj.Verbose('Displaying verbose messages enabled.')
-            else
-                obj.Verbose('Displaying verbose messages disabled.')
-                obj.verbose = yes_or_no;
-            end
-                       
-        end
-        
-        % disables Verbose prints
-        function VerboseDisable()
-            DataCache.VerboseEnable(0);
-        end
-        
-        % attempts to find the file in the cache and if not uses a reader
-        % corresponding to the file extension to load it from hard drive.
-        % Paramtere directory is optional, as typically directory is set
-        % with 'SetDir' method
+
         function data = Load(file, directory)
+        % Load retrieves the content of the file processed via
+        % reader funtion (associated to the file extension). The file first
+        % attempts to find a matching item in the cache, comparing full
+        % path and file timestamp. If match is found, the cache contents
+        % are given to the user (quick data access). In case of cache miss
+        % data is loaded from the disk (slow data access).
+        % 
+        % Usage:        
+        %
+        %   data = Load(file) loads the file from the directory
+        %   specified by user using DataCache.SetDir. 'file' input paramter
+        %   is expected to be a filename or a relative path. The absolute
+        %   path throws an error.
+        %
+        %   data = Load(file, directory) loads the file contents using
+        %   explicitly provided directory. The 'directory' parameter may be an
+        %   absolute or relative to current matlab working directory.
+        %   The default search path is not modified by this method call.
+        %
+        %   See also DATACACHE/SetDir, DATACACHE/GetDir, DATACACHE
             obj = DataCache.getInstance();
             
             if (nargin == 1)
@@ -351,8 +397,10 @@ classdef DataCache < handle
             end
         end
         
-        % list the files currently being cached
         function List()
+        % List displays a list of cached files
+        %
+        %   See also DATACACHE/Clean, DATACACHE
             obj = DataCache.getInstance();
             if(numel(obj.cache) > 0)
                 disp(['Cached files: ' num2str(numel(obj.cache)) '.']);
@@ -364,8 +412,10 @@ classdef DataCache < handle
             end
         end
         
-        % removes all the items form the cache
         function Clean()
+        % Clean wipes the cache contents
+        %
+        %   See also DATACACHE/List, DATACACHE
             obj = DataCache.getInstance();
             cache = obj.cache; %#ok<NASGU>
             info = whos('cache');
@@ -379,8 +429,48 @@ classdef DataCache < handle
                 end
             end
         end
+
+        function VerboseEnable(yes_or_no)
+        % VerboseEnable enables or disables textual messages from DataCache
+        %
+        % Usage:
+        %
+        %   VerboseEnable() enables messages
+        %
+        %   VerboseEnable(yes_or_no) enables or disables messages depending on
+        %   the value of the 'yes_or_no' boolean flag. Integer values are
+        %   also accepted.
+        %
+        %   See also DATACACHE/VerboseDisable, DATACACHE    
+            obj = DataCache.getInstance();
+            
+            if(nargin > 0)
+                validateattributes(yes_or_no,{'logical','numeric'},{'scalar'})
+            else
+                yes_or_no = true;
+            end       
+            
+            if(yes_or_no)
+                obj.verbose = yes_or_no;
+                obj.Verbose('Displaying verbose messages enabled.')
+            else
+                obj.Verbose('Displaying verbose messages disabled.')
+                obj.verbose = yes_or_no;
+            end
+                       
+        end
+        
+        function VerboseDisable()
+        % VerboseDisable disables textual messages from DataCache and functionally
+        % is equal to 'DataCache.VerboseEnable(false)'
+        %
+        %   See also DATACACHE/VerboseEnable, DATACACHE    
+            DataCache.VerboseEnable(0);
+        end
         
     end
+ 
+ %% internal methods
     
     methods (Access = private)
         
