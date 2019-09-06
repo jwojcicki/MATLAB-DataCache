@@ -44,7 +44,7 @@
 %
 %   A simple usage example
 %
-%   % sets the search path and memory cap
+%   % sets the default search path
 %   DataCache.SetDir('C:\testdata\');
 %   % Loads a TDMS file from 'C:\testdata\'
 %   data1 = DataCache.Load('data1.tdms');
