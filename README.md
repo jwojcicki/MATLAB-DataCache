@@ -8,17 +8,14 @@ The intention of this class is to speed up the scripts which rely on external da
 Use cases:
 In m-scripts it common to load a file on every time you run the script, which has a bad performance pentaly. Often the workaround is loading the file conditionally, that is if the output variable exists it means the file has been loaded, so you use the contents of this file e.g.:
 
----
 ```matlab
 if(~exists('data'))
 data = load('somefile.mat')
 end
 ```
----
 
 However clearing workspace memory ('clear') erases the data variable, the data may also be overwritten or modified in another script leading to unpredictable behaviour. The DataCache overcomes this problem by keeping the data copies in the persistent memory that is not visible to the user. Data cache 'survives' the 'clear' command, but will be erased by 'clear all' command (whose use is discuraged unless used conciously). The example usage is as follows:
 
----
 ```matlab
 % clear old script vars (but the cache remains intact)
 clear
@@ -29,7 +26,6 @@ data1 = DataCache.Load('data.tdms');
 % retrieves data from cache (much faster)
 data2 = DataCache.Load('data.tdms');
 ```
----
 
 Running the script again, both DataCache.Load call will retrieve cache data, as the memory is persistent:
 
