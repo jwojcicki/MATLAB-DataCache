@@ -167,18 +167,24 @@ classdef DataCache < handle
             obj.defaultReaderSet();
         end
         
-        function ListReaders()
+        function varargout = ListReaders()
         % ListReaders displays a lists of the handled file extensions
         % and the associated file readers 
         % 
         %   See also DATACACHE/ADDREADER, DATACACHE/RESETREADERS, DATACACHE 
             obj = DataCache.getInstance();
-            if(~isempty(obj.reader_list))
-                for r = obj.reader_list
-                    obj.Info(['.' r.ext ' => ' char(r.func)])
+            if(nargout == 1)
+                varargout{1} = obj.reader_list;
+            elseif(nargout == 0)
+                if(~isempty(obj.reader_list))
+                    for r = obj.reader_list
+                        obj.Info(['.' r.ext ' => ' char(r.func)])
+                    end
+                else
+                    obj.Info('No readers available. Use DataCache.AddReader to add supported filetypes');
                 end
             else
-                obj.Info('No readers available. Use DataCache.AddReader to add supported filetypes');
+                error('Too many output arguments, expected 0 or 1');
             end
         end
         
@@ -294,7 +300,7 @@ classdef DataCache < handle
             end
         end
 
-        function data = Load(file, directory)
+        function data = Load(varargin)
         % Load retrieves the content of the file processed via
         % reader funtion (associated to the file extension). The file first
         % attempts to find a matching item in the cache, comparing full
@@ -303,6 +309,11 @@ classdef DataCache < handle
         % data is loaded from the disk (slow data access).
         % 
         % Usage:        
+        %
+        %   data = Load() opens a file loading dialog. It will allow only
+        %   to load files for which there are file readers available. Upon
+        %   loading the currect DataCache directory will be modified to the
+        %   one from which the last file was selected.
         %
         %   data = Load(file) loads the file from the directory
         %   specified by user using DataCache.SetDir. 'file' input paramter
@@ -315,12 +326,31 @@ classdef DataCache < handle
         %   The default search path is not modified by this method call.
         %
         %   See also DATACACHE/SetDir, DATACACHE/GetDir, DATACACHE
+              
             obj = DataCache.getInstance();
             
-            if (nargin == 1)
+            if(nargin == 0)
+                
+                readers = DataCache.ListReaders();
+                ext = {readers(:).ext};
+                ext = strcat('*.',ext);
+                
+                ext_coma = strjoin(ext,', ');
+                ext_semi = strjoin(ext,';');
+                
+                [file, directory] = uigetfile({ext_semi,['Available readers (' ext_coma ')']}, 'Choose a file to read via DataCache', obj.dir);
+                if(file == 0)
+                    obj.Verbose('User did not select a file. No data was loaded.');
+                    return;
+                end
+                % we will override directory by user default
+                DataCache.SetDir(directory);
+            elseif (nargin == 1)
+                file = varargin{1};
                 directory = obj.dir;
-            else
-                directory = DataCache.absPath(directory);
+            elseif(nargin == 2)
+                file = varargin{1};
+                directory = DataCache.absPath(varargin{2});
             end
             
             path = fullfile(directory,file);
@@ -533,13 +563,13 @@ classdef DataCache < handle
         % prints out message if in the verbose mode
         function Verbose(obj, msg)
             if(obj.verbose)
-                disp(['Verbose: ' msg]);
+                disp(['DataCache(V): ' msg]);
             end
         end
         
         % prints out message
         function Info(~, msg)
-            disp(['Info: ' msg]);
+            disp(['DataCache(I): ' msg]);
         end
         
         % erases items from the cache looking for the oldest (by access) to
