@@ -552,7 +552,7 @@ classdef DataCache < handle
         function [func, idx] = FindLoader(obj, ext)
             func = [];
             for idx = length(obj.reader_list):-1:1
-                if(strcmp(obj.reader_list(idx).ext, ext))
+                if(strcmpi(obj.reader_list(idx).ext, ext))
                     func = obj.reader_list(idx).func;
                     return
                 end
